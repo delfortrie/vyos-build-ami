@@ -49,8 +49,12 @@ VyOS image to it, emulating the installation procedure.
 
 ## Troubleshooting
 
-**NOTE:** If playbook fails, it leaves behind a t2.micro instance, an SSH key pair names "vyos-build-ami", and a security group also named "vyos-build-ami".
+**NOTE:** If playbook fails, it leaves behind a t3.micro instance, an SSH key pair names "vyos-build-ami", and a security group also named "vyos-build-ami".
 If you want to restart the process from the beginning, remove those by hand.
+
+### T3 Instance and NVMe
+
+This project uses T3 instances which feature NVMe SSD storage. The EBS volume is attached as `/dev/sdf` from AWS's perspective, but appears as `/dev/nvme1n1` inside the instance. The playbooks handle this automatically.
 
 Sometimes playbook tasks fail through no one's fault, for example, SSH timeouts if an instance takes too long to create.
 

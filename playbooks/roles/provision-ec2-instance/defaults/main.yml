@@ -4,7 +4,7 @@ key_pair_name: vyos-build-ami
 ec2_region: us-east-1
 temp_folder: "{{ playbook_dir }}/files/ssh-keys"
 key_pair_file: "{{ temp_folder }}/{{ key_pair_name }}.pem"
-instance_type: t2.micro
+instance_type: t3.micro
 
 base_image:
   debian_aws_account_id: "136693071363"
@@ -15,5 +15,7 @@ base_image:
 
 placeholder: vyos-build-ami
 volume_size: 4
-volume_drive: /dev/xvdf
+# T3 instances use NVMe drives
+volume_drive: /dev/nvme1n1
+volume_drive_partition_suffix: p1
 ansible_ssh_private_key_file: "{{ key_pair_file }}"

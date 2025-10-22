@@ -1,7 +1,6 @@
 service {
     ssh {
-        disable-password-authentication {
-        }
+        disable-password-authentication
         port 22
     }
 }
@@ -12,6 +11,7 @@ system {
             authentication {
                 encrypted-password "*"
                 plaintext-password ""
+                # SSH keys will be injected by EC2 cloud-init
             }
             level admin
         }
@@ -34,10 +34,18 @@ system {
     config-management {
         commit-revisions 100
     }
+    # Enable EC2 metadata service for SSH key injection
+    options {
+        http-client {
+            source-interface eth0
+        }
+    }
 }
 interfaces {
     ethernet eth0 {
         address dhcp
+        description "EC2 primary network interface"
     }
-    loopback lo
+    loopback lo {
+    }
 }
