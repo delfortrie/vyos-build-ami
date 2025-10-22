@@ -8,17 +8,6 @@ The official AMIs are built with these exact scripts so if you build one for you
 
 ## Prerequisites
 
-### VyOS ISO Preparation
-
-VyOS images built with default `make iso` options *do not* include EC2 autoconfiguration mechanism.
-
-To make an image suitable for an AMI, build with AWS support:
-
-```bash
-./configure
-sudo make AWS
-```
-
 ### AWS Configuration
 
 - AWS CLI configured with credentials and default region
