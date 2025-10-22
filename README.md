@@ -2,8 +2,7 @@
 
 Ansible playbooks for building VyOS AMIs on AWS EC2.
 
-**NOTE:** You can support VyOS development by using the official VyOS AMI from the marketplace: https://aws.amazon.com/marketplace/pp/B074KJK4WC
-(starting from $50/year).
+**NOTE:** You can support VyOS development by using the official VyOS AMI from the AWS marketplace: https://aws.amazon.com/marketplace/pp/B074KJK4WC
 
 The official AMIs are built with these exact scripts so if you build one for yourself, your own AMI will be functionally identical to the official ones.
 
@@ -36,16 +35,18 @@ sudo make AWS
 
 ### Installation
 
-1. **Install Python dependencies:**
+1. **Set up Python virtual environment:**
 
 ```bash
-pip install -r requirements.txt
+./bootstrap-virtualenv
 ```
 
-2. **Install Ansible Galaxy collections:**
+This will create a virtual environment in `env/`, install all dependencies, and set up Ansible collections.
+
+2. **Activate the virtual environment:**
 
 ```bash
-ansible-galaxy collection install -r requirements.yml
+source env/bin/activate
 ```
 
 3. **Configure AWS CLI:**
@@ -88,24 +89,26 @@ VyOS ISOs for AWS must be built with EC2 support. When using official nightly bu
 
 ### Configuration Options
 
-You can customize the build by modifying variables in `playbooks/roles/*/defaults/main.yml`:
+You can customize the build by modifying variables in `playbooks/group_vars/all`:
 
-- **Region:** Default is `us-east-1` (change in `provision-ec2-instance/defaults/main.yml`)
+- **Region:** Default is `us-east-1`
 - **Instance Type:** Default is `t3.micro` (T3+ instances support EC2 Instance Connect)
-- **Volume Size:** Default is 4GB
+- **Volume Size:** Default is 10GB (VyOS recommended minimum)
 - **Key Pair:** Default name is `vyos-build-ami`
+- **SSH Access:** Default allows SSH from `0.0.0.0/0` (change `ssh_cidr_ip` in `provision-ec2-instance/defaults/main.yml`)
 
 ## How It Works
 
 Since AWS doesn't support direct disk image uploads, this project:
 
-1. **Launches a Debian Trixie (13) t3.micro instance** with an additional EBS volume
-2. **Downloads the VyOS ISO** and mounts it
+1. **Launches a Debian Trixie (13) t3.micro instance** with an additional 10GB gp3 EBS volume
+2. **Downloads the VyOS ISO** to `/var/tmp` on the instance
 3. **Installs VyOS** to the EBS volume using overlay filesystem
 4. **Configures GRUB** for EC2 serial console support
 5. **Creates an EBS snapshot** of the volume
-6. **Registers an AMI** from the snapshot
-7. **Cleans up** temporary resources
+6. **Copies the snapshot with encryption** enabled (using AWS managed keys)
+7. **Registers a gp3 encrypted AMI** from the encrypted snapshot with IMDSv2 required
+8. **Cleans up** temporary resources
 
 ## Troubleshooting
 
@@ -181,17 +184,20 @@ The project is organized into modular Ansible roles:
 ### Technology Stack
 
 - **Base Instance:** Debian 13 (Trixie) on T3.micro
-- **Storage:** gp3 EBS volumes with NVMe interface
+- **Storage:** gp3 EBS volumes with NVMe interface, encrypted at rest
 - **Filesystem:** Overlay (modern replacement for AUFS)
 - **Boot Loader:** GRUB2 with serial console support
 - **Ansible Collections:** `amazon.aws` (>= 5.0.0)
+- **Ansible Version:** 9.x-11.x (ansible-core 2.16-2.19)
 
 ### Security
 
-- SSH password authentication is disabled by default
-- EC2 Instance Connect supported on T3+ instances
-- SSH keys are injected via EC2 user-data/cloud-init
-- Security group allows SSH from 0.0.0.0/0 during build (temporary)
+- **IMDSv2:** Required for both build instances and created AMIs
+- **Encryption:** EBS volumes encrypted using AWS managed keys
+- **SSH:** Password authentication disabled, key-based only
+- **EC2 Instance Connect:** Supported on T3+ instances
+- **Network:** Security group allows SSH from configurable CIDR (default 0.0.0.0/0, customize via `ssh_cidr_ip`)
+- **Temporary Resources:** Build infrastructure automatically cleaned up after AMI creation
 
 ## Contributing
 
