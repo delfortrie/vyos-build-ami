@@ -1,2 +1,2 @@
-deb http://deb.debian.org/debian/ jessie main non-free contrib
-deb-src http://deb.debian.org/debian/ jessie main non-free contrib
+deb http://deb.debian.org/debian/ trixie main non-free-firmware contrib
+deb-src http://deb.debian.org/debian/ trixie main non-free-firmware contrib

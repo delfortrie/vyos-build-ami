@@ -5,10 +5,10 @@ $script = <<SCRIPT
 
 
 apt-get update
-apt-get install -y python-dev gcc python-pip
+apt-get install -y python3-dev gcc python3-pip
 apt-get install -y vim git ack-grep
 
-pip install virtualenv
+pip3 install virtualenv
 
 ./bootstrap-virtualenv
 
@@ -19,8 +19,7 @@ echo "cd /vagrant" >> ~vagrant/.bash_profile
 SCRIPT
 
 Vagrant.configure("2") do |config|
-  config.vm.box = "puppetlabs-debian-607-x64-vbox4210-nocm"
-  config.vm.box_url = "http://puppet-vagrant-boxes.puppetlabs.com/debian-607-x64-vbox4210-nocm.box"
+  config.vm.box = "debian/trixie64"
 
   config.vm.provision :file, source: '~/.gitconfig', destination: '/home/vagrant/.gitconfig' if File.exist?(ENV['HOME'] + '/.gitconfig')
   config.vm.provision :file, source: '~/.vimrc', destination: '/home/vagrant/.vimrc' if File.exist?(ENV['HOME'] + '/.vimrc')

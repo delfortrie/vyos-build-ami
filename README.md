@@ -44,7 +44,7 @@ The baseline code now supports only VyOS >=1.2.0. If you want to build an AMI fr
 
 ## Operation
 
-Since there is no easy way to upload a disk image to AWS directly, the playbooks create a Debian Jessie instance and run a sequence of commands to create an EBS disk and unpack the
+Since there is no easy way to upload a disk image to AWS directly, the playbooks create a Debian Trixie instance and run a sequence of commands to create an EBS disk and unpack the
 VyOS image to it, emulating the installation procedure.
 
 ## Troubleshooting

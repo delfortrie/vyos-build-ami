@@ -94,7 +94,7 @@
     - AWS
 
 #Look up the AMI id to use based on a search
-- name: Look up Debian Jessie AMI
+- name: Look up Debian Trixie AMI
   amazon.aws.ec2_ami_info:
     owners: "{{ base_image.debian_aws_account_id }}"
     region: "{{ ec2_region }}"

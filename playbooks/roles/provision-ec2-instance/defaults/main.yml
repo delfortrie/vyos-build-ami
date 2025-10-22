@@ -7,8 +7,8 @@ key_pair_file: "{{ temp_folder }}/{{ key_pair_name }}.pem"
 instance_type: t2.micro
 
 base_image:
-  debian_aws_account_id: "379101102735"
-  name: "debian-jessie-amd64-hvm-*"
+  debian_aws_account_id: "136693071363"
+  name: "debian-13-amd64-*"
   architecture: "x86_64"
   hypervisor: "xen"
   root_device_type: "ebs"
