@@ -6,6 +6,7 @@ verify_ssl = true
 [dev-packages]
 
 [packages]
-botocore = "*"
-boto3 = "*"
-boto = "*"
+# boto3 and botocore should be pinned together (boto3 depends on botocore)
+# Using ~= allows patch updates (e.g., 1.40.x) but prevents breaking changes
+boto3 = "~=1.40.55"
+botocore = "~=1.40.55"

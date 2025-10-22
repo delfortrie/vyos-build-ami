@@ -19,3 +19,8 @@ volume_size: 4
 volume_drive: /dev/nvme1n1
 volume_drive_partition_suffix: p1
 ansible_ssh_private_key_file: "{{ key_pair_file }}"
+
+# Security group SSH access configuration
+# WARNING: Default allows SSH from anywhere (0.0.0.0/0)
+# For production use, restrict to your IP or VPN CIDR (e.g., "203.0.113.0/24")
+ssh_cidr_ip: "0.0.0.0/0"

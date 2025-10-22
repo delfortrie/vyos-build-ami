@@ -29,34 +29,10 @@
 
 # ---- Set up the specified ISO release ----
 
-# - name: Fetch VyOS ISO GPG signature
-#   uri:
-#     url: "{{ vyos_iso_url }}.asc"
-#     dest: "{{ vyos_iso_local }}.asc"
-#     status_code: 200,404,403
-#   tags: verify
-#   register: gpg_uri
-
 - name: Download VyOS ISO release
   get_url:
     url: "{{ vyos_iso_url }}"
     dest: "{{ vyos_iso_local }}"
-
-# - name: Fetch the VyOS release GPG key
-#   get_url:
-#     url: "{{ vyos_key_url}}"
-#     dest: "{{ vyos_key_local }}"
-#   tags: verify
-
-# - name: Install the VyOS release GPG key
-#   command: gpg --import {{ vyos_key_local }}
-#   when: gpg_uri.status == 200
-#   tags: verify
-
-# - name: Validate ISO GPG signature
-#   command: gpg --verify {{ vyos_iso_local }}.asc {{ vyos_iso_local }}
-#   when: gpg_uri.status == 200
-#   tags: verify
 
 - name: Mount ISO
   mount:

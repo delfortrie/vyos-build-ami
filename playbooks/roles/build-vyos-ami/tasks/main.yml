@@ -43,23 +43,4 @@
       build_user: "{{ ansible_user_id }}"
       build_controller_host: "{{ ansible_hostname }}"
 
-# - name: Register AMI from {{ ec2_instance.instances[0].id }}
-#   ec2_ami:
-#     instance_id: "{{ ec2_instance.instances[0].id }}"
-#     wait: yes
-#     name: "{{ ami_name }}"
-#     region: "{{ ec2_region }}"
-#     description: "{{ ami_description }}"
-#     architecture: "{{ ami_architecture }}"
-#     root_device_name: "{{ ami_root_device_name }}"
-#     device_mapping:
-#       - device_name: "{{ ami_root_device_name }}"
-#         snapshot_id: "{{ ec2_snap.snapshot_id }}"
-#     tags:
-#       Name: "{{ ami_name }}"
-#       iso_url: "{{ iso }}"
-#       iso: "{{ iso | basename }}"
-#       build_user: "{{ ansible_user_id }}"
-#       build_controller_host: "{{ ansible_hostname }}"
-
 
