@@ -110,6 +110,9 @@
     region: "{{ ec2_region }}"
     security_groups:
       - "{{ security_group.group_id }}"
+    metadata_options:
+      http_tokens: required
+      http_put_response_hop_limit: 1
     wait: yes
     tags:
       Name: "{{ placeholder }}"
