@@ -27,9 +27,6 @@
       - gnupg
     state: present
 
-- name: Load aufs module
-  shell: modprobe aufs
-
 # ---- Set up the specified ISO release ----
 
 # - name: Fetch VyOS ISO GPG signature
@@ -126,6 +123,7 @@
   file:
     path: "{{ WRITE_ROOT }}/boot/{{ version_string.stdout }}/work/work"
     state: directory
+  register: WORK_DIR
 
 - name: Copy squashfs image from ISO to root partition
   command: cp -p {{ SQUASHFS_IMAGE }} {{ WRITE_ROOT }}/boot/{{ version_string.stdout }}/{{ version_string.stdout }}.squashfs
@@ -148,9 +146,9 @@
 - name: Set up union root for post installation tasks
   mount:
     name: "{{ INSTALL_ROOT }}"
-    src: none
-    fstype: aufs
-    opts: "noatime,dirs={{ RW_DIR.path }}=rw:{{ READ_ROOT }}=rr"
+    src: overlay
+    fstype: overlay
+    opts: "lowerdir={{ READ_ROOT }},upperdir={{ RW_DIR.path }},workdir={{ WORK_DIR.path }}"
     state: mounted
 
 # ---- Post image installation tasks ----
@@ -222,8 +220,8 @@
 - name: Unmount {{ INSTALL_ROOT }}
   mount:
     name: "{{ INSTALL_ROOT }}"
-    src: overlayfs
-    fstype: overlayfs
+    src: overlay
+    fstype: overlay
     state: unmounted
 
 - name: Unmount {{ READ_ROOT }}

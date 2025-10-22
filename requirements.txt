@@ -1,0 +1,13 @@
+# Python dependencies for vyos-build-ami
+# Install with: pip install -r requirements.txt
+
+# AWS SDK
+boto3>=1.34.0
+botocore>=1.34.0
+boto>=2.49.0
+
+# Ansible
+ansible>=2.16.0,<3.0.0
+
+# AWS CLI
+awscli>=1.32.0

@@ -4,15 +4,15 @@
   ec2_snapshot:
     region: "{{ ec2_region }}"
     device_name: "{{ ebs_drive }}"
-    instance_id: "{{ ec2_instance.instances[0].id }}"
+    instance_id: "{{ ec2_instance.instances[0].instance_id }}"
     description: "{{ snapshot_description }}"
   register: ec2_snap
 
 - name: Stop instance that were previously launched
-  ec2:
+  amazon.aws.ec2_instance:
     state: 'stopped'
-    instance_ids: 
-      - "{{ ec2_instance.instances[0].id }}"
+    instance_ids:
+      - "{{ ec2_instance.instances[0].instance_id }}"
     region: "{{ ec2_region }}"
     wait: yes
 

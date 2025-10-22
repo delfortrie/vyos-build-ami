@@ -111,23 +111,27 @@
 
 #---- Launch EC2 instance ----
 - name: Launch an EC2 instance
-  ec2:
+  amazon.aws.ec2_instance:
     key_name: "{{ key_pair_name }}"
-    assign_public_ip: True
+    network:
+      assign_public_ip: true
     vpc_subnet_id: "{{ vpc_subnets.subnets[0].subnet_id }}"
-    image: "{{ debian_ami.images[0].image_id }}"
+    image_id: "{{ debian_ami.images[0].image_id }}"
     instance_type: "{{ instance_type }}"
     region: "{{ ec2_region }}"
-    group_id: "{{ security_group.group_id  }}"
+    security_groups:
+      - "{{ security_group.group_id }}"
     wait: yes
-    instance_tags:
+    tags:
       Name: "{{ placeholder }}"
       Type: "VyOS"
     volumes:
       - device_name: /dev/sdf
-        volume_type: gp2
-        volume_size: "{{ volume_size }}"
-        delete_on_termination: True
+        ebs:
+          volume_type: gp3
+          volume_size: "{{ volume_size }}"
+          delete_on_termination: true
+    state: running
   register: ec2_instance
   tags:
     - aws
@@ -135,7 +139,7 @@
 
 - name: Add instance's public DNS name to ansible host group ec2
   add_host:
-    name: "{{ ec2_instance.instances[0].public_ip }}"
+    name: "{{ ec2_instance.instances[0].public_ip_address }}"
     groups: ec2
     ansible_user: admin
     ansible_ssh_private_key_file: "{{ key_pair_file }}"
@@ -145,15 +149,15 @@
     - AWS
 
 - name: Show EC2 instance public ip.
-  debug: 
-    msg: "{{ ec2_instance.instances[0].public_ip }}"
+  debug:
+    msg: "{{ ec2_instance.instances[0].public_ip_address }}"
   tags:
     - aws
     - AWS
 
 - name: Wait for instance's SSH port to open
   wait_for:
-    host: "{{ ec2_instance.instances[0].public_ip }}"
+    host: "{{ ec2_instance.instances[0].public_ip_address }}"
     port: 22
     delay: 10
     timeout: 300
