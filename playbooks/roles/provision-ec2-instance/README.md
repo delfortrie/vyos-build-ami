@@ -1,38 +1,68 @@
-Role Name
-=========
+# provision-ec2-instance
 
-A brief description of the role goes here.
+Provisions an EC2 instance for building VyOS AMI images.
 
-Requirements
-------------
+## Description
 
-Any pre-requisites that may not be covered by Ansible itself or the role should be mentioned here. For instance, if the role uses the EC2 module, it may be a good idea to mention in this section that the boto package is required.
+This role creates the necessary AWS infrastructure to build a VyOS AMI:
+- EC2 instance (T3.micro by default) with Debian Trixie
+- Security group allowing SSH access
+- SSH key pair for instance access
+- Additional EBS volume for VyOS installation
 
-Role Variables
---------------
+## Requirements
 
-A description of the settable variables for this role should go here, including any variables that are in defaults/main.yml, vars/main.yml, and any variables that can/should be set via parameters to the role. Any variables that are read from other roles and/or the global scope (ie. hostvars, group vars, etc.) should be mentioned here as well.
+- Ansible 2.16+
+- `amazon.aws` collection >= 5.0.0
+- AWS credentials configured
+- boto3, botocore, boto Python packages
 
-Dependencies
-------------
+## Role Variables
 
-A list of other roles hosted on Galaxy should go here, plus any details in regards to parameters that may need to be set for other roles, or variables that are used from other roles.
+Available variables are listed below, along with default values (see `defaults/main.yml`):
 
-Example Playbook
-----------------
+```yaml
+# SSH key pair name
+key_pair_name: vyos-build-ami
 
-Including an example of how to use your role (for instance, with variables passed in as parameters) is always nice for users too:
+# AWS region
+ec2_region: us-east-1
 
-    - hosts: servers
-      roles:
-         - { role: username.rolename, x: 42 }
+# Instance type (T3+ recommended for NVMe and EC2 Instance Connect)
+instance_type: t3.micro
 
-License
--------
+# Base Debian AMI configuration
+base_image:
+  debian_aws_account_id: "136693071363"
+  name: "debian-13-amd64-*"
+  architecture: "x86_64"
+  hypervisor: "xen"
+  root_device_type: "ebs"
 
-BSD
+# Volume configuration (T3 uses NVMe)
+volume_size: 4
+volume_drive: /dev/nvme1n1
+volume_drive_partition_suffix: p1
+```
 
-Author Information
-------------------
+## Dependencies
 
-An optional section for the role authors to include contact information, or a website (HTML is not allowed).
+None.
+
+## Example Playbook
+
+```yaml
+- hosts: local
+  connection: local
+  gather_facts: True
+  roles:
+    - provision-ec2-instance
+```
+
+## License
+
+MIT
+
+## Author Information
+
+VyOS maintainers and contributors

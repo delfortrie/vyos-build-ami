@@ -1,38 +1,68 @@
-Role Name
-=========
+# build-vyos-ami
 
-A brief description of the role goes here.
+Creates an EBS snapshot and registers it as an AMI.
 
-Requirements
-------------
+## Description
 
-Any pre-requisites that may not be covered by Ansible itself or the role should be mentioned here. For instance, if the role uses the EC2 module, it may be a good idea to mention in this section that the boto package is required.
+This role finalizes the AMI creation process:
+- Creates an EBS snapshot of the VyOS-installed volume
+- Stops the build instance
+- Registers an AMI from the snapshot
+- Tags the AMI with build metadata
 
-Role Variables
---------------
+## Requirements
 
-A description of the settable variables for this role should go here, including any variables that are in defaults/main.yml, vars/main.yml, and any variables that can/should be set via parameters to the role. Any variables that are read from other roles and/or the global scope (ie. hostvars, group vars, etc.) should be mentioned here as well.
+- Ansible 2.16+
+- `amazon.aws` collection >= 5.0.0
+- AWS credentials configured
+- Completed `build-disk` role execution
 
-Dependencies
-------------
+## Role Variables
 
-A list of other roles hosted on Galaxy should go here, plus any details in regards to parameters that may need to be set for other roles, or variables that are used from other roles.
+Available variables are listed below, along with default values (see `defaults/main.yml` and `vars/main.yml`):
 
-Example Playbook
-----------------
+```yaml
+# AWS region
+ec2_region: us-east-1
 
-Including an example of how to use your role (for instance, with variables passed in as parameters) is always nice for users too:
+# EBS drive to snapshot
+ebs_drive: /dev/sdf
 
-    - hosts: servers
-      roles:
-         - { role: username.rolename, x: 42 }
+# AMI configuration (derived from VyOS version)
+ami_name: VyOS (HVM) {{ version_string }}
+ami_description: The VyOS AMI is an EBS-backed, HVM image...
+ami_architecture: x86_64
+ami_virtualization_type: hvm
+ami_root_device_name: /dev/xvda
+```
 
-License
--------
+## Dependencies
 
-BSD
+- `provision-ec2-instance` role
+- `build-disk` role
 
-Author Information
-------------------
+## AMI Features
 
-An optional section for the role authors to include contact information, or a website (HTML is not allowed).
+The registered AMI includes:
+- ENA (Elastic Network Adapter) support
+- SR-IOV networking support
+- HVM virtualization
+- EBS-backed storage
+- Serial console access
+- EC2 Instance Connect support (T3+ instances)
+
+## Tags
+
+AMIs are tagged with:
+- `iso_url` - Source ISO URL
+- `iso` - ISO filename
+- `build_user` - User who ran the build
+- `build_controller_host` - Hostname of build controller
+
+## License
+
+MIT
+
+## Author Information
+
+VyOS maintainers and contributors

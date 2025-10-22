@@ -1,38 +1,73 @@
-Role Name
-=========
+# ec2-cleanup
 
-A brief description of the role goes here.
+Removes temporary resources created during AMI build process.
 
-Requirements
-------------
+## Description
 
-Any pre-requisites that may not be covered by Ansible itself or the role should be mentioned here. For instance, if the role uses the EC2 module, it may be a good idea to mention in this section that the boto package is required.
+This role cleans up AWS resources created during the VyOS AMI build:
+- Terminates the build EC2 instance
+- Deletes the SSH key pair
+- Removes the security group
+- Deletes temporary SSH key files
 
-Role Variables
---------------
+## Requirements
 
-A description of the settable variables for this role should go here, including any variables that are in defaults/main.yml, vars/main.yml, and any variables that can/should be set via parameters to the role. Any variables that are read from other roles and/or the global scope (ie. hostvars, group vars, etc.) should be mentioned here as well.
+- Ansible 2.16+
+- `amazon.aws` collection >= 5.0.0
+- AWS credentials configured
 
-Dependencies
-------------
+## Role Variables
 
-A list of other roles hosted on Galaxy should go here, plus any details in regards to parameters that may need to be set for other roles, or variables that are used from other roles.
+Variables are inherited from `provision-ec2-instance` role:
 
-Example Playbook
-----------------
+```yaml
+# AWS region
+ec2_region: us-east-1
 
-Including an example of how to use your role (for instance, with variables passed in as parameters) is always nice for users too:
+# SSH key pair name
+key_pair_name: vyos-build-ami
 
-    - hosts: servers
-      roles:
-         - { role: username.rolename, x: 42 }
+# Temporary folder for SSH keys
+temp_folder: "{{ playbook_dir }}/files/ssh-keys"
 
-License
--------
+# Security group ID (from provision role)
+security_group.group_id: <dynamically created>
 
-BSD
+# EC2 instance info (from provision role)
+ec2_instance.instances: <dynamically created>
+```
 
-Author Information
-------------------
+## Dependencies
 
-An optional section for the role authors to include contact information, or a website (HTML is not allowed).
+- `provision-ec2-instance` role (provides security_group variable)
+
+## Error Handling
+
+This role uses `ignore_errors: true` for most tasks to ensure cleanup continues even if resources were already manually deleted or don't exist.
+
+## Manual Cleanup
+
+If automated cleanup fails, you can manually remove resources:
+
+```bash
+# Find and terminate instances
+aws ec2 describe-instances \
+  --filters "Name=tag:Name,Values=vyos-build-ami" "Name=tag:Type,Values=VyOS" \
+  --query 'Reservations[*].Instances[*].InstanceId' --output text
+
+aws ec2 terminate-instances --instance-ids <instance-id>
+
+# Delete key pair
+aws ec2 delete-key-pair --key-name vyos-build-ami
+
+# Delete security group (after instance termination)
+aws ec2 delete-security-group --group-name vyos_build_ami
+```
+
+## License
+
+MIT
+
+## Author Information
+
+VyOS maintainers and contributors

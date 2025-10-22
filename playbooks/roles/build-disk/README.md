@@ -1,38 +1,78 @@
-Role Name
-=========
+# build-disk
 
-A brief description of the role goes here.
+Installs VyOS from ISO to an EBS volume on the build instance.
 
-Requirements
-------------
+## Description
 
-Any pre-requisites that may not be covered by Ansible itself or the role should be mentioned here. For instance, if the role uses the EC2 module, it may be a good idea to mention in this section that the boto package is required.
+This role performs the VyOS installation process:
+- Downloads VyOS ISO to the build instance
+- Mounts and verifies the ISO image
+- Partitions the attached EBS volume
+- Installs VyOS to the volume using overlay filesystem
+- Configures GRUB bootloader with EC2 serial console support
+- Applies default EC2 configuration for VyOS
 
-Role Variables
---------------
+## Requirements
 
-A description of the settable variables for this role should go here, including any variables that are in defaults/main.yml, vars/main.yml, and any variables that can/should be set via parameters to the role. Any variables that are read from other roles and/or the global scope (ie. hostvars, group vars, etc.) should be mentioned here as well.
+- Ansible 2.16+
+- Running on a Debian-based EC2 instance
+- Additional EBS volume attached
+- VyOS ISO URL provided
 
-Dependencies
-------------
+## Role Variables
 
-A list of other roles hosted on Galaxy should go here, plus any details in regards to parameters that may need to be set for other roles, or variables that are used from other roles.
+Available variables are listed below, along with default values (see `defaults/main.yml`):
 
-Example Playbook
-----------------
+```yaml
+# VyOS ISO URL (passed from command line)
+vyos_iso_url: "{{ iso }}"
+vyos_iso_local: /tmp/vyos.iso
 
-Including an example of how to use your role (for instance, with variables passed in as parameters) is always nice for users too:
+# Filesystem configuration
+ROOT_FSTYPE: ext4
+ROOT_PARTITION: "{{ volume_drive }}{{ volume_drive_partition_suffix }}"
 
-    - hosts: servers
-      roles:
-         - { role: username.rolename, x: 42 }
+# Volume configuration (inherited from provision role)
+volume_size: 4
+volume_drive: /dev/nvme1n1
+volume_drive_partition_suffix: p1
 
-License
--------
+# Mount points for installation
+CD_ROOT: /mnt/cdrom
+CD_SQUASH_ROOT: /mnt/cdsquash
+WRITE_ROOT: /mnt/wroot
+READ_ROOT: /mnt/squashfs
+INSTALL_ROOT: /mnt/inst_root
+```
 
-BSD
+## Dependencies
 
-Author Information
-------------------
+- `provision-ec2-instance` role (must run first)
 
-An optional section for the role authors to include contact information, or a website (HTML is not allowed).
+## How It Works
+
+1. Downloads VyOS ISO and verifies checksums
+2. Mounts ISO and squashfs filesystem
+3. Partitions EBS volume with MSDOS partition table
+4. Creates ext4 filesystem with persistence label
+5. Copies VyOS files to volume
+6. Sets up overlay filesystem for installation
+7. Installs GRUB to volume's boot sector
+8. Configures GRUB for EC2 serial console
+9. Applies default VyOS EC2 configuration
+10. Unmounts all filesystems
+
+## Templates
+
+- `boot/grub/grub.cfg.j2` - GRUB configuration with serial console support
+- `boot/grub/device.map.j2` - GRUB device mapping
+- `config.boot.default.ec2` - Default VyOS configuration for EC2
+- `persistence.conf` - Persistence configuration
+
+## License
+
+MIT
+
+## Author Information
+
+VyOS maintainers and contributors

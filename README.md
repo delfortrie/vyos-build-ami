@@ -1,5 +1,6 @@
-VyOS build-ami
---------------
+# VyOS build-ami
+
+Ansible playbooks for building VyOS AMIs on AWS EC2.
 
 **NOTE:** You can support VyOS development by using the official VyOS AMI from the marketplace: https://aws.amazon.com/marketplace/pp/B074KJK4WC
 (starting from $50/year).
@@ -8,57 +9,194 @@ The official AMIs are built with these exact scripts so if you build one for you
 
 ## Prerequisites
 
-VyOS images built with default `make iso` options *do not* include EC2 autoconfiguration mechanism).
+### VyOS ISO Preparation
 
-To make an image suitable for an AMI, do this instead:
+VyOS images built with default `make iso` options *do not* include EC2 autoconfiguration mechanism.
 
-```
+To make an image suitable for an AMI, build with AWS support:
+
+```bash
 ./configure
 sudo make AWS
 ```
 
+### AWS Configuration
+
+- AWS CLI configured with credentials and default region
+- Sufficient AWS permissions to create EC2 instances, AMIs, security groups, and EBS snapshots
+- Available VPC and subnet in your region
+
 ## Requirements
 
-The build scripts are based on ansible and awscli.
+### System Requirements
 
-To install and configure awscli, follow the user guide: http://docs.aws.amazon.com/cli/latest/userguide/cli-chap-welcome.html
-Make sure the python modules boto, botocore, and boto3 also gets installed.
+- Linux, macOS, or WSL2 on Windows
+- Python 3.8 or higher
+- Ansible 2.16 or higher
 
-Ansible is available from the repositories on most Linux distributions.
+### Installation
 
-After installing Ansible, you must install the required Ansible Galaxy collections:
+1. **Install Python dependencies:**
+
+```bash
+pip install -r requirements.txt
+```
+
+2. **Install Ansible Galaxy collections:**
 
 ```bash
 ansible-galaxy collection install -r requirements.yml
 ```
 
-These scripts and playbooks should work on any Linux system, or, theoretically, on any system supported by ansible and awscli.
+3. **Configure AWS CLI:**
+
+```bash
+aws configure
+```
+
+See the [AWS CLI user guide](http://docs.aws.amazon.com/cli/latest/userguide/cli-chap-welcome.html) for detailed configuration instructions.
 
 ## Usage
 
-```
+### Basic Usage
+
+```bash
 ./vyos-build-ami <VyOS ISO URL>
 ```
 
-The baseline code now supports only VyOS >=1.2.0. If you want to build an AMI from VyOS 1.1.x, check out the 1.1.x tag.
+**Example:**
 
-## Operation
+```bash
+./vyos-build-ami https://github.com/vyos/vyos-rolling-nightly-builds/releases/download/1.5-rolling-202501/vyos-1.5-rolling-202501150006-amd64.iso
+```
 
-Since there is no easy way to upload a disk image to AWS directly, the playbooks create a Debian Trixie instance and run a sequence of commands to create an EBS disk and unpack the
-VyOS image to it, emulating the installation procedure.
+### Supported Versions
+
+- **VyOS 1.2.0 and newer** - Fully supported
+- **VyOS 1.1.x** - Use the `1.1.x` tag of this repository
+
+### Configuration Options
+
+You can customize the build by modifying variables in `playbooks/roles/*/defaults/main.yml`:
+
+- **Region:** Default is `us-east-1` (change in `provision-ec2-instance/defaults/main.yml`)
+- **Instance Type:** Default is `t3.micro` (T3+ instances support EC2 Instance Connect)
+- **Volume Size:** Default is 4GB
+- **Key Pair:** Default name is `vyos-build-ami`
+
+## How It Works
+
+Since AWS doesn't support direct disk image uploads, this project:
+
+1. **Launches a Debian Trixie (13) t3.micro instance** with an additional EBS volume
+2. **Downloads the VyOS ISO** and mounts it
+3. **Installs VyOS** to the EBS volume using overlay filesystem
+4. **Configures GRUB** for EC2 serial console support
+5. **Creates an EBS snapshot** of the volume
+6. **Registers an AMI** from the snapshot
+7. **Cleans up** temporary resources
 
 ## Troubleshooting
 
-**NOTE:** If playbook fails, it leaves behind a t3.micro instance, an SSH key pair names "vyos-build-ami", and a security group also named "vyos-build-ami".
-If you want to restart the process from the beginning, remove those by hand.
+### Failed Playbook Cleanup
 
-### T3 Instance and NVMe
+If the playbook fails, the following resources may be left behind in your AWS account:
 
-This project uses T3 instances which feature NVMe SSD storage. The EBS volume is attached as `/dev/sdf` from AWS's perspective, but appears as `/dev/nvme1n1` inside the instance. The playbooks handle this automatically.
+- **EC2 Instance:** t3.micro instance named "vyos-build-ami"
+- **SSH Key Pair:** Named "vyos-build-ami"
+- **Security Group:** Named "vyos_build_ami"
+- **EBS Volume:** Attached to the instance (deleted when instance is terminated)
 
-Sometimes playbook tasks fail through no one's fault, for example, SSH timeouts if an instance takes too long to create.
+To manually clean up:
 
-Note that AMI name is fixed, and registering the AMI will fail if you try to run the playbooks when you already have one in your account. De-register the old one first.
+```bash
+# Delete instance
+aws ec2 terminate-instances --instance-ids <instance-id>
+
+# Delete key pair
+aws ec2 delete-key-pair --key-name vyos-build-ami
+
+# Delete security group (after instance is terminated)
+aws ec2 delete-security-group --group-name vyos_build_ami
+```
+
+### Common Issues
+
+#### AMI Already Exists
+
+**Error:** AMI registration fails because an AMI with the same name already exists.
+
+**Solution:** De-register the existing AMI first, or modify the AMI name in `playbooks/roles/build-vyos-ami/vars/main.yml`.
+
+```bash
+# List your VyOS AMIs
+aws ec2 describe-images --owners self --filters "Name=name,Values=VyOS*"
+
+# De-register an AMI
+aws ec2 deregister-image --image-id <ami-id>
+```
+
+#### SSH Timeout
+
+**Error:** Playbook times out waiting for SSH connection.
+
+**Cause:** EC2 instance took longer than 300 seconds to boot.
+
+**Solution:** Re-run the playbook. The existing instance will be cleaned up and a new one created.
+
+#### T3 Instance and NVMe Storage
+
+T3+ instances use NVMe SSD storage. The EBS volume is attached as `/dev/sdf` from AWS's API perspective, but appears as `/dev/nvme1n1` inside the instance. The playbooks handle this automatically.
+
+For T2 instances or older instance types, you'll need to modify:
+- `volume_drive: /dev/xvdf`
+- `volume_drive_partition_suffix: 1`
+
+## Architecture
+
+### Ansible Roles
+
+The project is organized into modular Ansible roles:
+
+- **provision-ec2-instance** - Creates build instance, security group, and SSH key pair
+- **build-disk** - Downloads ISO, installs VyOS to EBS volume, configures GRUB
+- **build-vyos-ami** - Creates snapshot and registers AMI
+- **ec2-cleanup** - Removes temporary resources
+
+### Technology Stack
+
+- **Base Instance:** Debian 13 (Trixie) on T3.micro
+- **Storage:** gp3 EBS volumes with NVMe interface
+- **Filesystem:** Overlay (modern replacement for AUFS)
+- **Boot Loader:** GRUB2 with serial console support
+- **Ansible Collections:** `amazon.aws` (>= 5.0.0)
+
+### Security
+
+- SSH password authentication is disabled by default
+- EC2 Instance Connect supported on T3+ instances
+- SSH keys are injected via EC2 user-data/cloud-init
+- Security group allows SSH from 0.0.0.0/0 during build (temporary)
+
+## Contributing
+
+Contributions are welcome! Please:
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test with a real VyOS ISO build
+5. Submit a pull request
+
+### Testing
+
+Before submitting changes, test with:
+
+```bash
+./vyos-build-ami <test-iso-url>
+```
+
+Verify the resulting AMI boots and is accessible via SSH.
 
 ## License
 
