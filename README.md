@@ -122,18 +122,22 @@ aws ec2 delete-security-group --group-name vyos_build_ami
 
 ### Common Issues
 
-#### AMI Already Exists
+#### Managing Multiple AMIs
 
-**Error:** AMI registration fails because an AMI with the same name already exists.
+AMI names include a timestamp to prevent collisions. You can safely run the build multiple times for the same VyOS version.
 
-**Solution:** De-register the existing AMI first, or modify the AMI name in `playbooks/roles/build-vyos-ami/vars/main.yml`.
+To clean up old AMIs:
 
 ```bash
 # List your VyOS AMIs
-aws ec2 describe-images --owners self --filters "Name=name,Values=VyOS*"
+aws ec2 describe-images --owners self --filters "Name=name,Values=VyOS*" \
+  --query 'Images[*].[ImageId,Name,CreationDate]' --output table
 
-# De-register an AMI
+# De-register an old AMI
 aws ec2 deregister-image --image-id <ami-id>
+
+# Delete the associated snapshot (optional, saves storage costs)
+aws ec2 delete-snapshot --snapshot-id <snapshot-id>
 ```
 
 #### SSH Timeout
