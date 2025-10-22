@@ -64,16 +64,27 @@ See the [AWS CLI user guide](http://docs.aws.amazon.com/cli/latest/userguide/cli
 ./vyos-build-ami <VyOS ISO URL>
 ```
 
-**Example:**
+**Example with latest nightly build:**
 
 ```bash
-./vyos-build-ami https://github.com/vyos/vyos-rolling-nightly-builds/releases/download/1.5-rolling-202501/vyos-1.5-rolling-202501150006-amd64.iso
+./vyos-build-ami https://github.com/vyos/vyos-nightly-build/releases/download/2025.10.17-0019-rolling/vyos-2025.10.17-0019-rolling-generic-amd64.iso
 ```
+
+**Finding the latest build:**
+
+VyOS nightly builds are available at: https://vyos.net/get/nightly-builds/
+
+Or browse releases directly: https://github.com/vyos/vyos-nightly-build/releases
 
 ### Supported Versions
 
+- **VyOS Rolling (current branch)** - Latest nightly builds from `vyos-nightly-build` repository
 - **VyOS 1.2.0 and newer** - Fully supported
 - **VyOS 1.1.x** - Use the `1.1.x` tag of this repository
+
+### ISO Requirements
+
+VyOS ISOs for AWS must be built with EC2 support. When using official nightly builds, use the `-generic-amd64.iso` variant, which includes cloud-init and AWS autoconfiguration.
 
 ### Configuration Options
 
