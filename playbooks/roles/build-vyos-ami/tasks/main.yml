@@ -8,6 +8,21 @@
     description: "{{ snapshot_description }}"
   register: ec2_snap
 
+- name: Copy snapshot with encryption enabled
+  command: aws ec2 copy-snapshot
+            --region {{ ec2_region }}
+            --source-region {{ ec2_region }}
+            --source-snapshot-id {{ ec2_snap.snapshot_id }}
+            --description "{{ snapshot_description }} (encrypted)"
+            --encrypted
+            --output json
+  register: ec2_snap_encrypted
+
+- name: Wait for encrypted snapshot to complete
+  command: aws ec2 wait snapshot-completed
+            --region {{ ec2_region }}
+            --snapshot-ids {{ (ec2_snap_encrypted.stdout | from_json).SnapshotId }}
+
 - name: Stop instance that were previously launched
   amazon.aws.ec2_instance:
     state: 'stopped'
@@ -23,7 +38,7 @@
             --description '{{ ami_description }}'
             --architecture {{ ami_architecture }}
             --root-device-name {{ ami_root_device_name }}
-            --block-device-mappings '[{"DeviceName":"{{ ami_root_device_name }}","Ebs":{"SnapshotId":"{{ ec2_snap.snapshot_id }}"}}]'
+            --block-device-mappings '[{"DeviceName":"{{ ami_root_device_name }}","Ebs":{"SnapshotId":"{{ (ec2_snap_encrypted.stdout | from_json).SnapshotId }}","VolumeType":"gp3"}}]'
             --virtualization-type {{ ami_virtualization_type }}
             --sriov-net-support simple
             --ena-support

@@ -14,7 +14,8 @@ base_image:
   root_device_type: "ebs"
 
 placeholder: vyos-build-ami
-volume_size: 4
+# VyOS recommends minimum 10GB
+volume_size: 10
 # T3 instances use NVMe drives
 volume_drive: /dev/nvme1n1
 volume_drive_partition_suffix: p1

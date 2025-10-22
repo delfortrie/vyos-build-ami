@@ -1,9 +1,9 @@
 ---
 # defaults file for build-disk
 vyos_iso_url: "{{ iso }}"
-vyos_iso_local: /tmp/vyos.iso
+vyos_iso_local: /var/tmp/vyos.iso
 vyos_key_url: http://packages.vyos.net/vyos-release.gpg
-vyos_key_local: /tmp/vyos-release.gpg
+vyos_key_local: /var/tmp/vyos-release.gpg
 CD_ROOT: /mnt/cdrom
 CD_SQUASH_ROOT: /mnt/cdsquash
 SQUASHFS_IMAGE: "{{ CD_ROOT }}/live/filesystem.squashfs"

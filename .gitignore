@@ -4,3 +4,4 @@ playbooks/files/ssh-keys/
 *.retry
 env
 .tmp/
+group_vars/local.yml

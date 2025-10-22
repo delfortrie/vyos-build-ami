@@ -1,14 +1,4 @@
 ---
-- name: install boto3 prerequisites
-  pip:
-    state: present
-    name:
-     - boto3
-     - boto
-  become: yes
-  tags:
-    - prerequisites
-
 # tasks file for provision-ec2-instance
 - name: Make sure that files/ssh-keys directory exists
   file:
@@ -22,7 +12,6 @@
   ec2_key:
     name: "{{ key_pair_name }}"
     region: "{{ ec2_region }}"
-    wait: True
   register: key_pair
   tags:
     - aws

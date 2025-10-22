@@ -42,11 +42,17 @@
     opts: loop,ro
     state: mounted
 
+- name: Check if md5sum.txt exists in ISO
+  stat:
+    path: "{{ CD_ROOT }}/md5sum.txt"
+  register: md5sum_file
+
 - name: Verify checksums of all the files in the ISO image
   command: md5sum -c md5sum.txt
   args:
     chdir: "{{ CD_ROOT }}"
   changed_when: False
+  when: md5sum_file.stat.exists
 
 - name: Mount squashfs image from ISO
   mount:
@@ -157,8 +163,6 @@
           mount --bind /proc {{ INSTALL_ROOT }}/proc &&
           mount --bind /sys {{ INSTALL_ROOT }}/sys &&
           mount --bind {{ WRITE_ROOT }} {{ INSTALL_ROOT }}/boot
-  args:
-    warn: no
 
 - name: Install GRUB in the boot sector of {{ volume_drive }}
   command: chroot {{ INSTALL_ROOT }} grub-install --no-floppy --root-directory=/boot {{ volume_drive }}
