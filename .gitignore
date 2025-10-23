@@ -5,3 +5,4 @@ playbooks/files/ssh-keys/
 env
 .tmp/
 group_vars/local.yml
+todo.md

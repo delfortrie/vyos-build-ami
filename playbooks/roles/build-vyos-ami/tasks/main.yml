@@ -42,7 +42,6 @@
             --virtualization-type {{ ami_virtualization_type }}
             --sriov-net-support simple
             --ena-support
-            --imds-support v2.0
             --output json
   register: ec2_ami
 

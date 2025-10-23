@@ -141,11 +141,13 @@
     path: "{{ INSTALL_ROOT }}/opt/vyatta/etc/config/.vyatta_config"
     state: touch
 
-- name: Copy the default config for EC2 to the installed image
-  template:
-    src: templates/config.boot.default.ec2
-    dest: "{{ INSTALL_ROOT }}/opt/vyatta/etc/config/config.boot"
-    mode: 0755
+# Not copying config.boot - let VyOS boot with defaults (vyos/vyos) and cloud-init handle SSH key injection
+# Cloud-init is installed and will inject SSH keys from EC2 metadata on first boot
+# - name: Copy the default config for EC2 to the installed image
+#   template:
+#     src: templates/config.boot.default.ec2
+#     dest: "{{ INSTALL_ROOT }}/opt/vyatta/etc/config/config.boot"
+#     mode: 0755
 
     ## ---- Install GRUB boot loader ----
 - name: Create GRUB directory
@@ -163,6 +165,93 @@
           mount --bind /proc {{ INSTALL_ROOT }}/proc &&
           mount --bind /sys {{ INSTALL_ROOT }}/sys &&
           mount --bind {{ WRITE_ROOT }} {{ INSTALL_ROOT }}/boot
+
+    ## ---- Install and configure cloud-init for EC2 ----
+- name: Copy DNS configuration into chroot
+  copy:
+    src: /etc/resolv.conf
+    dest: "{{ INSTALL_ROOT }}/etc/resolv.conf"
+    remote_src: yes
+
+- name: Install cloud-init in VyOS image
+  shell: |
+    chroot {{ INSTALL_ROOT }} /bin/bash -c "
+      # Update package lists
+      apt-get update
+
+      # Install cloud-init
+      DEBIAN_FRONTEND=noninteractive apt-get install -y cloud-init
+
+      # Configure cloud-init for EC2
+      cat > /etc/cloud/cloud.cfg.d/99_ec2.cfg <<'EOF'
+    # Cloud-init configuration for AWS EC2
+    datasource_list: [ Ec2 ]
+    datasource:
+      Ec2:
+        strict_id: false
+        metadata_urls: ['http://169.254.169.254']
+        timeout: 10
+        max_wait: 30
+
+    # Disable network configuration by cloud-init (VyOS handles this)
+    network:
+      config: disabled
+
+    # SSH key injection
+    ssh_pwauth: false
+    disable_root: false
+
+    # Enable services
+    cloud_init_modules:
+     - migrator
+     - seed_random
+     - bootcmd
+     - write-files
+     - growpart
+     - resizefs
+     - disk_setup
+     - mounts
+     - set_hostname
+     - update_hostname
+     - update_etc_hosts
+     - ca-certs
+     - rsyslog
+     - users-groups
+     - ssh
+
+    cloud_config_modules:
+     - ssh-import-id
+     - keyboard
+     - locale
+     - set-passwords
+     - timezone
+     - disable-ec2-metadata
+     - runcmd
+
+    cloud_final_modules:
+     - scripts-vendor
+     - scripts-per-once
+     - scripts-per-boot
+     - scripts-per-instance
+     - scripts-user
+     - ssh-authkey-fingerprints
+     - keys-to-console
+     - final-message
+    EOF
+
+      # Ensure cloud-init services are enabled
+      systemctl enable cloud-init-local.service
+      systemctl enable cloud-init.service
+      systemctl enable cloud-config.service
+      systemctl enable cloud-final.service
+
+      # Clean cloud-init state so it runs on first boot
+      cloud-init clean --logs --seed
+    "
+
+- name: Display cloud-init installation confirmation
+  debug:
+    msg: "Cloud-init has been installed and configured for EC2"
 
 - name: Install GRUB in the boot sector of {{ volume_drive }}
   command: chroot {{ INSTALL_ROOT }} grub-install --no-floppy --root-directory=/boot {{ volume_drive }}
@@ -182,53 +271,27 @@
     mode: 0644
 
 # ---- Unmount all mounts ----
-- name: Unmount {{ INSTALL_ROOT }}/boot
-  mount:
-    name: "{{ INSTALL_ROOT }}/boot"
-    src: "{{ WRITE_ROOT }}"
-    fstype: none
-    state: unmounted
+- name: Kill any processes still running in chroot
+  shell: |
+    # Find and kill any processes with chroot as their root
+    for pid in $(lsof -t {{ INSTALL_ROOT }} 2>/dev/null || true); do
+      kill -9 $pid 2>/dev/null || true
+    done
+    # Sync to ensure all writes are flushed
+    sync
+  ignore_errors: yes
 
-- name: Unmount {{ INSTALL_ROOT }}/sys, {{ INSTALL_ROOT }}/proc, {{ INSTALL_ROOT }}/dev
-  mount:
-    name: "{{ INSTALL_ROOT }}/{{ item }}"
-    src: "/{{ item }}"
-    fstype: none
-    state: unmounted
-  with_items: [ 'sys', 'proc', 'dev' ]
-
-- name: Unmount {{ INSTALL_ROOT }}
-  mount:
-    name: "{{ INSTALL_ROOT }}"
-    src: overlay
-    fstype: overlay
-    state: unmounted
-
-- name: Unmount {{ READ_ROOT }}
-  mount:
-    name: "{{ READ_ROOT }}"
-    src: "{{ WRITE_ROOT }}/boot/{{ version_string.stdout }}/{{ version_string.stdout }}.squashfs"
-    fstype: squashfs
-    state: unmounted
-
-- name: Unmount {{ WRITE_ROOT }}
-  mount:
-    name: "{{ WRITE_ROOT }}"
-    src: "{{ ROOT_PARTITION }}"
-    fstype: "{{ ROOT_FSTYPE }}"
-    state: unmounted
-
-- name: Unmount {{ CD_SQUASH_ROOT }}
-  mount:
-    name: "{{ CD_SQUASH_ROOT }}"
-    src: "{{ SQUASHFS_IMAGE }}"
-    fstype: squashfs
-    state: unmounted
-
-- name: Unmount {{ CD_ROOT }}
-  mount:
-    name: "{{ CD_ROOT }}"
-    src: "{{ vyos_iso_local }}"
-    fstype: iso9660
-    state: unmounted
+- name: Force unmount all filesystems (lazy unmount to avoid busy errors)
+  shell: |
+    umount -l "{{ INSTALL_ROOT }}/boot" 2>/dev/null || true
+    umount -l "{{ INSTALL_ROOT }}/sys" 2>/dev/null || true
+    umount -l "{{ INSTALL_ROOT }}/proc" 2>/dev/null || true
+    umount -l "{{ INSTALL_ROOT }}/dev" 2>/dev/null || true
+    umount -l "{{ INSTALL_ROOT }}" 2>/dev/null || true
+    umount -l "{{ READ_ROOT }}" 2>/dev/null || true
+    umount -l "{{ WRITE_ROOT }}" 2>/dev/null || true
+    umount -l "{{ CD_SQUASH_ROOT }}" 2>/dev/null || true
+    umount -l "{{ CD_ROOT }}" 2>/dev/null || true
+    sync
+  ignore_errors: yes
 
