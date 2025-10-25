@@ -141,13 +141,11 @@
     path: "{{ INSTALL_ROOT }}/opt/vyatta/etc/config/.vyatta_config"
     state: touch
 
-# Not copying config.boot - let VyOS boot with defaults (vyos/vyos) and cloud-init handle SSH key injection
-# Cloud-init is installed and will inject SSH keys from EC2 metadata on first boot
-# - name: Copy the default config for EC2 to the installed image
-#   template:
-#     src: templates/config.boot.default.ec2
-#     dest: "{{ INSTALL_ROOT }}/opt/vyatta/etc/config/config.boot"
-#     mode: 0755
+- name: Copy the default config for EC2 to the installed image
+  template:
+    src: templates/config.boot.default.ec2
+    dest: "{{ INSTALL_ROOT }}/opt/vyatta/etc/config/config.boot"
+    mode: 0755
 
     ## ---- Install GRUB boot loader ----
 - name: Create GRUB directory
@@ -176,11 +174,22 @@
 - name: Install cloud-init in VyOS image
   shell: |
     chroot {{ INSTALL_ROOT }} /bin/bash -c "
-      # Update package lists
-      apt-get update
+      set -euo pipefail
+      export DEBIAN_FRONTEND=noninteractive
+      export APT_LISTCHANGES_FRONTEND=none
+      export NEEDRESTART_MODE=a
 
-      # Install cloud-init
-      DEBIAN_FRONTEND=noninteractive apt-get install -y cloud-init
+      # Prevent service starts inside chroot (avoid hangs)
+      printf '%s\n' '#!/bin/sh' 'exit 101' > /usr/sbin/policy-rc.d
+      chmod +x /usr/sbin/policy-rc.d
+
+      # Update package lists with sane network defaults
+      apt-get -o Acquire::ForceIPv4=true -o Acquire::Retries=3 -o Acquire::http::Timeout=30 update
+
+      # Prefer VyOS cloud-init integration if available; fallback to Debian cloud-init
+      if ! apt-get install -y --no-install-recommends vyos-cloud-init; then
+        apt-get install -y --no-install-recommends cloud-init || true
+      fi
 
       # Configure cloud-init for EC2
       cat > /etc/cloud/cloud.cfg.d/99_ec2.cfg <<'EOF'
@@ -239,14 +248,23 @@
      - final-message
     EOF
 
-      # Ensure cloud-init services are enabled
-      systemctl enable cloud-init-local.service
-      systemctl enable cloud-init.service
-      systemctl enable cloud-config.service
-      systemctl enable cloud-final.service
+      # Ensure cloud-init targets the VyOS user for SSH key injection
+      cat > /etc/cloud/cloud.cfg.d/99_vyos_user.cfg <<'EOFU'
+    system_info:
+      default_user:
+        name: vyos
+        gecos: VyOS
+        lock_passwd: true
+        shell: /bin/vbash
+    users:
+      - default
+    EOFU
 
       # Clean cloud-init state so it runs on first boot
       cloud-init clean --logs --seed
+
+      # Allow services to start normally on actual boots
+      rm -f /usr/sbin/policy-rc.d || true
     "
 
 - name: Display cloud-init installation confirmation
@@ -294,4 +312,3 @@
     umount -l "{{ CD_ROOT }}" 2>/dev/null || true
     sync
   ignore_errors: yes
-

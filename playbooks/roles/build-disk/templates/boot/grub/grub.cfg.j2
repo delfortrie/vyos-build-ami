@@ -7,6 +7,6 @@ terminal_input console serial
 terminal_output console serial
 
 menuentry "VyOS AMI (HVM) {{ version_string.stdout }}" {
-  linux /boot/{{ version_string.stdout }}/vmlinuz boot=live selinux=0 vyos-union=/boot/{{ version_string.stdout }} console=tty0 console=ttyS0,115200n8
+  linux /boot/{{ version_string.stdout }}/vmlinuz boot=live selinux=0 vyos-union=/boot/{{ version_string.stdout }} console=tty0 console=ttyS0,115200n8 vyos-config-type=cloud-init
   initrd /boot/{{ version_string.stdout }}/initrd.img
 }

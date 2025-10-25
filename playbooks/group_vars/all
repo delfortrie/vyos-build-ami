@@ -11,3 +11,4 @@ volume_drive_partition_suffix: p1
 ansible_ssh_private_key_file: "{{ key_pair_file }}"
 ansible_host_key_checking: False
 ansible_python_interpreter: /usr/bin/python3
+ansible_ssh_timeout: 60
