@@ -1,7 +1,6 @@
 service {
     ssh {
-        disable-password-authentication {
-        }
+        disable-password-authentication
         port 22
     }
 }
@@ -10,15 +9,6 @@ system {
     console {
         device ttyS0 {
             speed 115200
-        }
-    }
-    login {
-        user vyos {
-            authentication {
-                encrypted-password "*"
-                plaintext-password ""
-            }
-            level admin
         }
     }
     syslog {
@@ -39,10 +29,17 @@ system {
     config-management {
         commit-revisions 100
     }
+    options {
+        http-client {
+            source-interface eth0
+        }
+    }
 }
 interfaces {
     ethernet eth0 {
         address dhcp
+        description "EC2 primary network interface"
     }
-    loopback lo
+    loopback lo {
+    }
 }
