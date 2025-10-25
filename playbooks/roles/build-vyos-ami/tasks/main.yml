@@ -42,6 +42,7 @@
             --virtualization-type {{ ami_virtualization_type }}
             --sriov-net-support simple
             --ena-support
+            --imds-support v2.0
             --output json
   register: ec2_ami
 
@@ -57,5 +58,4 @@
     # vyos-build-ami-git-rev: "{{ local_git_revision.stdout }}"
       build_user: "{{ ansible_user_id }}"
       build_controller_host: "{{ ansible_hostname }}"
-
 

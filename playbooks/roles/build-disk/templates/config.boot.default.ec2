@@ -6,6 +6,11 @@ service {
 }
 system {
     host-name VyOS-AMI
+    console {
+        device ttyS0 {
+            speed 115200
+        }
+    }
     syslog {
         global {
             facility all {
